@@ -1,0 +1,16 @@
+version: '3.8'
+services:
+  opentcs_kernel:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lead-r_kernel
+    network_mode: "host"
+    environment:
+      - JAVA_TOOL_OPTIONS=-Djava.rmi.server.hostname=192.168.3.142
+      - ROS_DOMAIN_ID=20
+      - ROS_DISCOVERY_SERVER=127.0.0.1:11811
+    volumes:
+      - /home/amy/fleet_server/opentcs/config:/opt/opentcs/config
+      - /home/amy/fleet_server/opentcs/data:/opt/opentcs/data
+    restart: unless-stopped
