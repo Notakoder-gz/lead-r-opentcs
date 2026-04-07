@@ -14,5 +14,3 @@ services:
       - /home/amy/fleet_server/opentcs/config:/opt/opentcs/config
       - /home/amy/fleet_server/opentcs/data:/opt/opentcs/data
     restart: unless-stopped
-    depends_on:
-      - zenoh-router
