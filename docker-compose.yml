@@ -8,12 +8,12 @@ services:
     container_name: lead-r_kernel
     network_mode: "host"
     environment:
-      - JAVA_TOOL_OPTIONS=-Duser.language=en -Duser.country=US -Djava.rmi.server.hostname=${HOST_IP:-192.168.3.142}
-      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-20}
-      - ROS_DISCOVERY_SERVER=${ROS_DISCOVERY_SERVER:-127.0.0.1:11811}
+      - JAVA_TOOL_OPTIONS=-Duser.language=en -Duser.country=US -Djava.rmi.server.hostname=${HOST_IP}
+      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+      - ROS_DISCOVERY_SERVER=${ROS_DISCOVERY_SERVER}
     volumes:
-      - ${OPENTCS_CONFIG_DIR:-./opentcs/config}:/opt/opentcs/config
-      - ${OPENTCS_DATA_DIR:-./opentcs/data}:/opt/opentcs/data
+      - ${OPENTCS_CONFIG_DIR}:/opt/opentcs/config
+      - ${OPENTCS_DATA_DIR}:/opt/opentcs/data
     restart: unless-stopped
 
   # 1. API Сервер
@@ -23,10 +23,10 @@ services:
     network_mode: "host"
     ipc: "host"
     volumes:
-      - ${RMF_API_CONFIG_FILE:-./rmf_api_config/my_config.py}:/ws/my_config.py
-      - ${RMF_MAPS_DIR:-./deploy_maps}:/ws/run/cache/maps/office/L1:ro
+      - ${RMF_API_CONFIG_FILE}:/ws/my_config.py
+      - ${RMF_MAPS_DIR}:/ws/run/cache/maps/office/L1:ro
     environment:
-      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-20}
+      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
       - RMF_API_SERVER_CONFIG=/ws/my_config.py
       - PYTHONUNBUFFERED=1
     restart: always
@@ -38,7 +38,7 @@ services:
     network_mode: "host"
     ipc: "host"
     environment:
-      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-20}
+      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
     command: bash -c "source /opt/ros/jazzy/setup.bash && ros2 run rmf_traffic_ros2 rmf_traffic_schedule"
     restart: always
 
@@ -48,7 +48,7 @@ services:
     container_name: lead-r_rmf_dashboard
     network_mode: "host"
     environment:
-      - RMF_SERVER_URL=http://${HOST_IP:-192.168.3.142}:8000
+      - RMF_SERVER_URL=http://${HOST_IP}:8000
       - REACT_APP_AUTH_PROVIDER=stub
     restart: always
 
@@ -60,9 +60,9 @@ services:
     network_mode: "host"
     ipc: "host"
     environment:
-      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-20}
+      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
     volumes:
-      - ${RMF_MAPS_DIR:-./deploy_maps}:/maps_data
+      - ${RMF_MAPS_DIR}:/maps_data
     # Используем rmf_building_map_tools, так как он понимает наш формат из скрипта
     command: >
       bash -c "source /opt/ros/jazzy/setup.bash &&
@@ -76,30 +76,30 @@ services:
     network_mode: "host"
     restart: always
 
-  # yahboom-fleet-adapter:
-  #   image: rmf_yb_fleet_adapter:latest
-  #   container_name: lead-r_fleet_adapter_full
-  #   network_mode: "host"
-  #   ipc: "host"
-  #   environment:
-  #     - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-20}
-  #     - PYTHONUNBUFFERED=1
-  #   volumes:
-  #     # Пробрасываем код адаптера
-  #     - ${YAHBOOM_ADAPTER_FILE:-./rmf_bridge/yahboom_adapter.py}:/app/yahboom_adapter.py:ro
-  #     # Пробрасываем карту (БЕЗ НЕЕ АДАПТЕР НЕ ЗАРЕГИСТРИРУЕТСЯ)
-  #     - ${YAHBOOM_MAP_FILE:-./rmf_compile_map/L1.nav/0.yaml}:/app/0.yaml:ro
-  #   # Команда запуска с обязательной активацией ROS 2
-  #   command: ["bash", "-c", "source /opt/ros/jazzy/setup.bash && python3 yahboom_adapter.py"]
-  #   restart: always
+  yahboom-fleet-adapter:
+    image: rmf_yb_fleet_adapter:latest
+    container_name: lead-r_fleet_adapter_full
+    network_mode: "host"
+    ipc: "host"
+    environment:
+      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # Пробрасываем код адаптера
+      - ${YAHBOOM_ADAPTER_FILE}:/app/yahboom_adapter.py:ro
+      # Пробрасываем карту (БЕЗ НЕЕ АДАПТЕР НЕ ЗАРЕГИСТРИРУЕТСЯ)
+      - ${YAHBOOM_MAP_FILE}:/app/0.yaml:ro
+    # Команда запуска с обязательной активацией ROS 2
+    command: ["bash", "-c", "source /opt/ros/jazzy/setup.bash && python3 yahboom_adapter.py"]
+    restart: always
 
-  # rmf-opentcs-adapter:
-  #   image: yb_fleet_adapter:latest
-  #   container_name: opentcs_fleet
-  #   network_mode: "host"
-  #   volumes:
-  #     - ${OPENTCS_ADAPTER_FILE:-./fleet_config/adapter.py}:/app/adapter.py:ro
-  #     - ${OPENTCS_ADAPTER_CONFIG_FILE:-./fleet_config/fleet_config.yaml}:/app/fleet_config.yaml:ro
-  #   restart: always
-  #   environment:
-  #     - PYTHONUNBUFFERED=1
+  rmf-opentcs-adapter:
+    image: yb_fleet_adapter:latest
+    container_name: opentcs_fleet
+    network_mode: "host"
+    volumes:
+      - ${OPENTCS_ADAPTER_FILE}:/app/adapter.py:ro
+      - ${OPENTCS_ADAPTER_CONFIG_FILE}:/app/fleet_config.yaml:ro
+    restart: always
+    environment:
+      - PYTHONUNBUFFERED=1
