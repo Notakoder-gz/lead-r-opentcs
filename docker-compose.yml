@@ -76,30 +76,27 @@ services:
     network_mode: "host"
     restart: always
 
-  #yahboom-fleet-adapter:
-    #image: rmf_yb_fleet_adapter:latest
-    #container_name: lead-r_fleet_adapter_full
-    #network_mode: "host"
-    #ipc: "host"
-    #environment:
-      #- ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
-      #- PYTHONUNBUFFERED=1
-    #volumes:
-      # Пробрасываем код адаптера
-      #- ${YAHBOOM_ADAPTER_FILE}:/app/yahboom_adapter.py:ro
-      # Пробрасываем карту (БЕЗ НЕЕ АДАПТЕР НЕ ЗАРЕГИСТРИРУЕТСЯ)
-      #- ${YAHBOOM_MAP_FILE}:/app/0.yaml:ro
-    # Команда запуска с обязательной активацией ROS 2
-    #command: ["bash", "-c", "source /opt/ros/jazzy/setup.bash && python3 yahboom_adapter.py"]
-    #restart: always
+  yahboom-fleet-adapter:
+    build: ./adapters/yahboom_rmf
+    image: lead-r/rmf_yb_fleet_adapter:latest
+    container_name: lead-r_fleet_adapter_full
+    network_mode: "host"
+    ipc: "host"
+    environment:
+      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+      - PYTHONUNBUFFERED=1
+      # Apply FastDDS profile to prevent micro-ROS WiFi flooding
+      - FASTRTPS_DEFAULT_PROFILES_FILE=/app/fastdds_profiles.xml
+    volumes:
+      # Пробрасываем карту из deploy_maps для парсинга графа (БЕЗ НЕЕ АДАПТЕР НЕ ЗАРЕГИСТРИРУЕТСЯ)
+      - ${YAHBOOM_MAP_FILE}:/app/0.yaml:ro
+    restart: always
 
-  #rmf-opentcs-adapter:
-    #image: yb_fleet_adapter:latest
-    #container_name: opentcs_fleet
-    #network_mode: "host"
-    #volumes:
-      #- ${OPENTCS_ADAPTER_FILE}:/app/adapter.py:ro
-      #- ${OPENTCS_ADAPTER_CONFIG_FILE}:/app/fleet_config.yaml:ro
-    #restart: always
-    #environment:
-      #- PYTHONUNBUFFERED=1
+  rmf-opentcs-adapter:
+    build: ./adapters/opentcs_bridge
+    image: lead-r/yb_fleet_adapter:latest
+    container_name: opentcs_fleet
+    network_mode: "host"
+    restart: always
+    environment:
+      - PYTHONUNBUFFERED=1

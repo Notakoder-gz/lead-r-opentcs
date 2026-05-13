@@ -25,7 +25,10 @@ RUN ls -F
 RUN dos2unix *.sh && chmod +x *.sh
 
 # Backup default config and data so we can copy them if host mount is empty
-RUN cp -r config default_config && cp -r data default_data
+# Make sure directories exist before copying to prevent cp from failing
+RUN mkdir -p config data default_config default_data && \
+    cp -r config/. default_config/ || true && \
+    cp -r data/. default_data/ || true
 
 # Add entrypoint script
 COPY entrypoint.sh .
