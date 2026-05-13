@@ -78,7 +78,6 @@ services:
 
   yahboom-fleet-adapter:
     build: ./adapters/yahboom_rmf
-    image: lead-r/rmf_yb_fleet_adapter:latest
     container_name: lead-r_fleet_adapter_full
     network_mode: "host"
     ipc: "host"
@@ -94,7 +93,6 @@ services:
 
   rmf-opentcs-adapter:
     build: ./adapters/opentcs_bridge
-    image: lead-r/yb_fleet_adapter:latest
     container_name: opentcs_fleet
     network_mode: "host"
     restart: always
