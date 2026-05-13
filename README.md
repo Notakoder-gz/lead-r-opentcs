@@ -11,10 +11,10 @@ Before running the stack, you must set up your environment variables:
 1. Copy `.env.example` to `.env`
 2. Adjust the absolute paths to point to your server directories (e.g., `/home/amy/...`)
 
-## Micro-ROS & FastDDS Networking Note
-By default, ROS 2 FastDDS utilizes multicast UDP for node discovery. This can lead to severe network flooding over Wi-Fi, which often crashes lightweight microcontrollers like the ESP32 running micro-ROS due to buffer overflows.
+## Micro-ROS & Networking Note
+By default, ROS 2 utilizes multicast UDP for node discovery via FastDDS. This can lead to severe network flooding over Wi-Fi, which often crashes lightweight microcontrollers like the ESP32 running micro-ROS due to buffer overflows.
 
-To mitigate this, a custom `fastdds_profiles.xml` is included and applied to the `yahboom-fleet-adapter` container via the `FASTRTPS_DEFAULT_PROFILES_FILE` environment variable. This profile restricts maximum message sizes and buffers.
+To mitigate this, the architecture has been migrated to use the official Zenoh RMW (`rmw_zenoh_cpp`). All ROS 2 components communicate reliably via the included `zenoh-router` service.
 
 ## Virtual Robots not appearing in Open-RMF
 If virtual robots from OpenTCS do not appear in the Open-RMF dashboard:
