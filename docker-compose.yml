@@ -25,9 +25,11 @@ services:
     volumes:
       - ${RMF_API_CONFIG_FILE}:/ws/my_config.py
       - ${RMF_MAPS_DIR}:/ws/run/cache/maps/office/L1:ro
+      - ./adapters/yahboom_rmf/fastdds_profiles.xml:/app/fastdds_profiles.xml:ro
     environment:
       - ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
       - RMF_API_SERVER_CONFIG=/ws/my_config.py
+      - FASTRTPS_DEFAULT_PROFILES_FILE=/app/fastdds_profiles.xml
       - PYTHONUNBUFFERED=1
     restart: always
 
@@ -37,8 +39,11 @@ services:
     container_name: lead-r_rmf_schedule
     network_mode: "host"
     ipc: "host"
+    volumes:
+      - ./adapters/yahboom_rmf/fastdds_profiles.xml:/app/fastdds_profiles.xml:ro
     environment:
       - ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+      - FASTRTPS_DEFAULT_PROFILES_FILE=/app/fastdds_profiles.xml
     command: bash -c "source /opt/ros/jazzy/setup.bash && ros2 run rmf_traffic_ros2 rmf_traffic_schedule"
     restart: always
 
@@ -49,9 +54,7 @@ services:
     network_mode: "host"
     environment:
       - RMF_SERVER_URL=http://${HOST_IP}:8000
-      - REACT_APP_AUTH_PROVIDER=basic
-      - REACT_APP_ADMIN_USER=${RMF_DASHBOARD_USER}
-      - REACT_APP_ADMIN_PASSWORD=${RMF_DASHBOARD_PASSWORD}
+      - REACT_APP_AUTH_PROVIDER=stub
     restart: always
 
   # 4. Сервер карты (Building Map Server)
@@ -63,8 +66,10 @@ services:
     ipc: "host"
     environment:
       - ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+      - FASTRTPS_DEFAULT_PROFILES_FILE=/app/fastdds_profiles.xml
     volumes:
       - ${RMF_MAPS_DIR}:/maps_data
+      - ./adapters/yahboom_rmf/fastdds_profiles.xml:/app/fastdds_profiles.xml:ro
     # Используем rmf_building_map_tools, так как он понимает наш формат из скрипта
     command: >
       bash -c "source /opt/ros/jazzy/setup.bash &&
