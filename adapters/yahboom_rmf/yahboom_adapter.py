@@ -135,13 +135,12 @@ def main():
     adapter.start()
 
     try:
-        # Use adapter's built in node to spin and keep the main thread alive for ROS2 callbacks
-        if hasattr(adapter, 'node'):
-            rclpy.spin(adapter.node)
-        else:
-            import time
-            while rclpy.ok():
-                time.sleep(1)
+        # The internal C++ RMF adapter spins in its own background threads.
+        # We simply need to keep the Python main thread alive without using rclpy.spin()
+        # on the internal C++ node object to prevent 'executor' attribute errors.
+        import time
+        while rclpy.ok():
+            time.sleep(1)
     except KeyboardInterrupt:
         print("🛑 Остановка адаптера...")
     finally:

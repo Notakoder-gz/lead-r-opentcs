@@ -49,7 +49,9 @@ services:
     network_mode: "host"
     environment:
       - RMF_SERVER_URL=http://${HOST_IP}:8000
-      - REACT_APP_AUTH_PROVIDER=stub
+      - REACT_APP_AUTH_PROVIDER=basic
+      - REACT_APP_ADMIN_USER=${RMF_DASHBOARD_USER}
+      - REACT_APP_ADMIN_PASSWORD=${RMF_DASHBOARD_PASSWORD}
     restart: always
 
   # 4. Сервер карты (Building Map Server)
