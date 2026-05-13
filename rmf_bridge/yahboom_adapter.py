@@ -25,7 +25,7 @@ class YahboomCommandHandle(adpt.RobotCommandHandle):
     def follow_new_path(self, waypoints, next_arrival_estimator, path_finished_callback):
         print(f"?? [{self.name}] Получен новый маршрут от RMF! Точек: {len(waypoints)}")
         # Здесь мы позже будем перехватывать маршрут и кидать его в OpenTCS
-
+        
     def dock(self, dock_name, docking_finished_callback):
         print(f"?? [{self.name}] Команда на зарядку: {dock_name}")
 
@@ -37,7 +37,7 @@ def main():
 
     # 2. Создаем ноду адаптера
     adapter = adpt.Adapter.make('yahboom_fleet_adapter')
-
+    
     # Защита от тайм-аута
     if adapter is None:
         print("❌ КРИТИЧЕСКАЯ ОШИБКА: Планировщик RMF (rmf_traffic_schedule) не найден!")
@@ -55,7 +55,7 @@ def main():
 
     # 4. Загружаем дорожный граф
     # ВАЖНО: Имя файла должно совпадать с тем, что мы пробросим в Docker
-    nav_graph_path = "/app/0.yaml"
+    nav_graph_path = "/app/0.yaml" 
     try:
         nav_graph = graph.parse_graph(nav_graph_path, robot_traits)
         print(f"✅ Граф загружен. Точек: {nav_graph.num_waypoints}")
@@ -97,7 +97,7 @@ def main():
     print("?? Подключение к Zenoh...")
     z_conf = zenoh.Config()
     session = zenoh.open(z_conf)
-
+    
     def get_nearest_waypoint(x, y):
         nearest_idx = 0
         min_dist = float('inf')
@@ -109,28 +109,28 @@ def main():
                 min_dist = dist
                 nearest_idx = i
         return nearest_idx
-
+        
     def zenoh_callback(sample):
         try:
             data = json.loads(bytes(sample.payload).decode('utf-8'))
             name = data['name']
-
+            
             if name in update_handles:
                 loc = data['location']
                 x = float(loc['x'])
                 y = float(loc['y'])
                 yaw = float(loc['yaw'])
-
+                
                 # 1. Находим ближайшую точку на графе
                 wp_idx = get_nearest_waypoint(x, y)
-
+                
                 # 2. Создаем объект Start (время, индекс точки, угол)
                 # В Jazzy это единственный "легальный" способ обновить позицию
                 new_start = plan.Start(adapter.now(), wp_idx, yaw)
-
+                
                 # 3. Передаем СПИСОК (List[plan.Start])
                 update_handles[name].update_position([new_start])
-
+                
         except Exception as e:
             print(f"❌ Ошибка обработки Zenoh: {e}")
 
@@ -138,30 +138,20 @@ def main():
 
     # 8. Запускаем "мозг" адаптера
     print("📡 Адаптер запущен и готов к работе!")
+    adapter.start() # Это запускает внутренний цикл RMF
+    
+    executor = MultiThreadedExecutor()
+    executor.add_node(node)
 
-    # adapter.start() creates the background thread for the rmf adapter.
-    adapter.start()
-
-    # In the original snippet `executor.add_node(node)` was referenced,
-    # but `node` was not defined. rmf_adapter.Adapter manages its own ros2 node lifecycle
-    # when adapter.start() is called. To keep the script alive and process ROS 2 callbacks,
-    # we can use the adapter's built-in node with standard rclpy spin.
-
-    # We will spin using the underlying rclpy node from the adapter.
     try:
-        if hasattr(adapter, 'node'):
-            rclpy.spin(adapter.node)
-        else:
-            # Fallback if adapter object structure differs: sleep loop
-            import time
-            while rclpy.ok():
-                time.sleep(1)
+        # Запускаем бесконечную обработку
+        executor.spin()
     except KeyboardInterrupt:
         print("🛑 Остановка адаптера...")
     finally:
-        session.close()
-        # Clean shutdown logic
+        node.destroy_node()
         rclpy.shutdown()
+    
 
 if __name__ == '__main__':
     main()
