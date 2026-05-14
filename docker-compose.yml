@@ -18,7 +18,7 @@ services:
 
   # 1. API Сервер
   rmf_api_server:
-    image: ghcr.io/open-rmf/rmf-web/api-server:latest
+    build: ./adapters/api_server
     container_name: lead-r_rmf_api
     network_mode: "host"
     ipc: "host"
