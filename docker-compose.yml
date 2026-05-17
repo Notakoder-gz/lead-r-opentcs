@@ -25,7 +25,7 @@ services:
     volumes:
       - ${RMF_API_CONFIG_FILE}:/ws/my_config.py
       - ${RMF_MAPS_DIR}:/ws/run/cache/maps/office/L1:ro
-      - ./fastdds_profiles.xml:/fastdds_profiles.xml:ro
+      - ${FASTDDS_PROFILE_FILE}:/fastdds_profiles.xml:ro
     environment:
       - ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
       - RMF_API_SERVER_CONFIG=/ws/my_config.py
@@ -40,7 +40,7 @@ services:
     network_mode: "host"
     ipc: "host"
     volumes:
-      - ./fastdds_profiles.xml:/fastdds_profiles.xml:ro
+      - ${FASTDDS_PROFILE_FILE}:/fastdds_profiles.xml:ro
     environment:
       - ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
       - FASTDDS_DEFAULT_PROFILES_FILE=/fastdds_profiles.xml
@@ -68,7 +68,7 @@ services:
       - FASTDDS_DEFAULT_PROFILES_FILE=/fastdds_profiles.xml
     volumes:
       - ${RMF_MAPS_DIR}:/maps_data
-      - ./fastdds_profiles.xml:/fastdds_profiles.xml:ro
+      - ${FASTDDS_PROFILE_FILE}:/fastdds_profiles.xml:ro
     # Используем rmf_building_map_tools, так как он понимает наш формат из скрипта
     command: >
       bash -c "source /opt/ros/jazzy/setup.bash &&
@@ -94,7 +94,7 @@ services:
     volumes:
       # Пробрасываем карту из deploy_maps для парсинга графа (БЕЗ НЕЕ АДАПТЕР НЕ ЗАРЕГИСТРИРУЕТСЯ)
       - ${YAHBOOM_MAP_FILE}:/app/0.yaml:ro
-      - ./fastdds_profiles.xml:/fastdds_profiles.xml:ro
+      - ${FASTDDS_PROFILE_FILE}:/fastdds_profiles.xml:ro
     restart: always
 
   rmf-opentcs-adapter:
@@ -106,4 +106,4 @@ services:
       - FASTDDS_DEFAULT_PROFILES_FILE=/fastdds_profiles.xml
       - PYTHONUNBUFFERED=1
     volumes:
-      - ./fastdds_profiles.xml:/fastdds_profiles.xml:ro
+      - ${FASTDDS_PROFILE_FILE}:/fastdds_profiles.xml:ro
