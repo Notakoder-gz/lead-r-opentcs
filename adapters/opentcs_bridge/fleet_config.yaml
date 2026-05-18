@@ -1,0 +1,23 @@
+fleet_manager:
+  prefix: "yahboom"
+  type: "openTCS" # Указываем, что управляем через TCS
+  user: "admin"
+  password: "password"
+  opentcs_api_url: "http://127.0.0.1:55200/v1/vehicles"
+  zenoh_router: "tcp/127.0.0.1:7447"
+
+rmf_fleet:
+  name: "yahboom_fleet"
+  limits:
+    linear: [0.5, 0.75] # скорость м/с
+    angular: [0.6, 1.0] # рад/с
+  profile:
+    footprint: 0.3 # радиус робота в метрах
+    vicinity: 0.5
+  navigation_graph: "/maps_data/office.building.yaml"
+
+robots:
+  yahboom_01:
+    charger: "P00" # Где робот заряжается
+  yahboom_02:
+    charger: "P01"
