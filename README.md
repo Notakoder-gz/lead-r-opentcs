@@ -1,22 +1,31 @@
-# lead-r-opentcs
-My first git project of opentcs deployment
+# OpenTCS Deployment Stack
 
-## Monorepo Architecture
-This repository now functions as a unified deployment source.
-The custom fleet adapters (`yahboom_rmf` and `opentcs_bridge`) are stored in the `adapters/` directory.
-When deploying via `docker compose up -d`, Portainer or your local Docker engine will automatically build these images from the source if they do not exist, ensuring maximum reliability and ease of updates.
+This repository contains a unified deployment stack exclusively for **OpenTCS**. It provides the core OpenTCS Kernel, a lightweight Web Dashboard, and a browser-based VNC interface for the official Java clients.
 
-## Configuration
-Before running the stack, you must set up your environment variables:
-1. Copy `.env.example` to `.env`
-2. Adjust the absolute paths to point to your server directories (e.g., `/home/amy/...`)
+## Architecture
 
-## Micro-ROS & FastDDS Networking Note
-By default, ROS 2 FastDDS utilizes multicast UDP for node discovery. This can lead to severe network flooding over Wi-Fi, which often crashes lightweight microcontrollers like the ESP32 running micro-ROS due to buffer overflows.
+1. **`opentcs_kernel`**: The core OpenTCS server running without a GUI. Exposes the Web API on port `55200` and RMI on `1099`.
+2. **`opentcs_web`**: A custom Node.js/Express web frontend running on port `3000`. Connects to the Kernel's Web API to display real-time statuses of vehicles and transport orders.
+3. **`opentcs_client_vnc`**: A Debian-based container running an X11 VNC server and noVNC (port `8080`). It contains the official OpenTCS Java clients (Plant Overview / Model Editor and Operations Desk). You can access these tools directly in your browser to edit the map or manage the fleet.
 
-To mitigate this, a custom `fastdds_profiles.xml` is included and applied to all relevant ROS 2 containers via the `FASTDDS_DEFAULT_PROFILES_FILE` environment variable. This profile restricts maximum message sizes and prevents built-in multicast storms, safeguarding the hardware on the local network.
+## Setup
 
-## Virtual Robots not appearing in Open-RMF
-If virtual robots from OpenTCS do not appear in the Open-RMF dashboard:
-1. Ensure the names of the robots in OpenTCS (e.g. `yahboom_01`) exactly match the names defined in the configuration files (`adapters/opentcs_bridge/fleet_config.yaml` and `adapters/yahboom_rmf/yahboom_adapter.py`).
-2. Verify that the Zenoh namespaces match across both the publisher in the OpenTCS bridge and the subscriber in the Yahboom adapter.
+1. Copy `.env.example` to `.env`.
+2. Edit `.env` and set `HOST_IP` to your server's actual IP address.
+3. Ensure the directories for `OPENTCS_CONFIG_DIR` and `OPENTCS_DATA_DIR` exist on your host.
+
+## Running
+
+Start the entire stack with Docker Compose:
+
+```bash
+docker compose up -d --build
+```
+
+## Access Points
+
+* **Custom Web Dashboard:** `http://<HOST_IP>:3000`
+* **Official OpenTCS Clients (noVNC):** `http://<HOST_IP>:8080/vnc.html`
+  * Password for VNC: `opentcs`
+  * Once inside, open a terminal and run `/home/opentcs/opentcs/startPlantOverview.sh` to edit the map.
+* **OpenTCS Web API:** `http://<HOST_IP>:55200/v1/...`

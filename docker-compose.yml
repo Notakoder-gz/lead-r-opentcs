@@ -1,110 +1,39 @@
 version: '3.8'
 
 services:
+  # OpenTCS Kernel (Core Server)
   opentcs_kernel:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: lead-r_kernel
+    container_name: opentcs_kernel
     network_mode: "host"
     environment:
       - JAVA_TOOL_OPTIONS=-Duser.language=en -Duser.country=US -Djava.rmi.server.hostname=${HOST_IP}
-      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
-      - ROS_DISCOVERY_SERVER=${ROS_DISCOVERY_SERVER}
     volumes:
       - ${OPENTCS_CONFIG_DIR}:/opt/opentcs/config
       - ${OPENTCS_DATA_DIR}:/opt/opentcs/data
     restart: unless-stopped
 
-  # 1. API Сервер
-  rmf_api_server:
+  # Custom Web Frontend for OpenTCS Monitoring and Orders
+  opentcs_web:
     build:
-      context: .
-      dockerfile: adapters/api_server/Dockerfile
-    container_name: lead-r_rmf_api
-    network_mode: "host"
-    ipc: "host"
-    volumes:
-      - ${RMF_API_CONFIG_FILE}:/ws/my_config.py
-      - ${RMF_MAPS_DIR}:/ws/run/cache/maps/office/L1:ro
-    environment:
-      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
-      - RMF_API_SERVER_CONFIG=/ws/my_config.py
-      - FASTDDS_DEFAULT_PROFILES_FILE=/fastdds_profiles.xml
-      - PYTHONUNBUFFERED=1
-    restart: always
-
-  # 2. Планировщик трафика (Schedule)
-  rmf_schedule:
-    image: ghcr.io/open-rmf/rmf/rmf_demos:jazzy-rmf-latest
-    container_name: lead-r_rmf_schedule
-    network_mode: "host"
-    ipc: "host"
-    volumes:
-      - ${FASTDDS_PROFILE_FILE}:/fastdds_profiles.xml:ro
-    environment:
-      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
-      - FASTDDS_DEFAULT_PROFILES_FILE=/fastdds_profiles.xml
-    command: bash -c "source /opt/ros/jazzy/setup.bash && ros2 run rmf_traffic_ros2 rmf_traffic_schedule"
-    restart: always
-
-  # 3. Дашборд
-  rmf_dashboard:
-    image: ghcr.io/open-rmf/rmf-web/dashboard:latest
-    container_name: lead-r_rmf_dashboard
+      context: ./opentcs-web
+      dockerfile: Dockerfile
+    container_name: opentcs_web_frontend
     network_mode: "host"
     environment:
-      - RMF_SERVER_URL=http://${HOST_IP}:8000
-    restart: always
+      - PORT=3000
+      # Use HOST_IP for connecting to the kernel
+      - OPENTCS_URL=http://${HOST_IP}:55200
+    restart: unless-stopped
 
-  # 4. Сервер карты (Building Map Server)
-  building_map_server:
-    # Используем образ с демо-инструментами, там точно есть Python-версия для .yaml
-    image: ghcr.io/open-rmf/rmf/rmf_demos:jazzy-rmf-latest
-    container_name: lead-r_rmf_map_server
-    network_mode: "host"
-    ipc: "host"
-    environment:
-      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
-      - FASTDDS_DEFAULT_PROFILES_FILE=/fastdds_profiles.xml
-    volumes:
-      - ${RMF_MAPS_DIR}:/maps_data
-      - ${FASTDDS_PROFILE_FILE}:/fastdds_profiles.xml:ro
-    # Используем rmf_building_map_tools, так как он понимает наш формат из скрипта
-    command: >
-      bash -c "source /opt/ros/jazzy/setup.bash &&
-      ros2 run rmf_building_map_tools building_map_server /maps_data/office.building.yaml"
-    restart: always
-
-  # 5. Zenoh Роутер
-  zenoh-router:
-    image: eclipse/zenoh:latest
-    container_name: zenoh_router
-    network_mode: "host"
-    restart: always
-
-  yahboom-fleet-adapter:
-    build: ./adapters/yahboom_rmf
-    container_name: lead-r_fleet_adapter_full
-    network_mode: "host"
-    ipc: "host"
-    environment:
-      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
-      - FASTDDS_DEFAULT_PROFILES_FILE=/fastdds_profiles.xml
-      - PYTHONUNBUFFERED=1
-    volumes:
-      # Пробрасываем карту из deploy_maps для парсинга графа (БЕЗ НЕЕ АДАПТЕР НЕ ЗАРЕГИСТРИРУЕТСЯ)
-      - ${YAHBOOM_MAP_FILE}:/app/0.yaml:ro
-      - ${FASTDDS_PROFILE_FILE}:/fastdds_profiles.xml:ro
-    restart: always
-
-  rmf-opentcs-adapter:
-    build: ./adapters/opentcs_bridge
-    container_name: opentcs_fleet
-    network_mode: "host"
-    restart: always
-    environment:
-      - FASTDDS_DEFAULT_PROFILES_FILE=/fastdds_profiles.xml
-      - PYTHONUNBUFFERED=1
-    volumes:
-      - ${FASTDDS_PROFILE_FILE}:/fastdds_profiles.xml:ro
+  # VNC container with OpenTCS Client apps (Model Editor & Operations Desk)
+  opentcs_client_vnc:
+    build:
+      context: ./opentcs-client-novnc
+      dockerfile: Dockerfile
+    container_name: opentcs_vnc
+    ports:
+      - "8080:8080"
+    restart: unless-stopped

@@ -6,7 +6,7 @@ WORKDIR /opt/opentcs
 RUN apt-get update && apt-get install -y wget unzip dos2unix findutils && rm -rf /var/lib/apt/lists/*
 
 # 2. Скачивание (Версия 7.2.1 Binary)
-RUN wget -q https://github.com/openTCS/opentcs/releases/download/v7.2.1/opentcs-7.2.1-bin.zip -O /tmp/opentcs.zip
+RUN wget -q https://github.com/openTCS/opentcs/releases/download/v7.2.1/openTCS-7.2.1-bin.zip -O /tmp/opentcs.zip
 
 # 3. Распаковка и копирование
 RUN mkdir -p /tmp/install && \
