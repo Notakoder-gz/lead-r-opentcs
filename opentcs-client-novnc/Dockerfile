@@ -23,7 +23,7 @@ USER opentcs
 WORKDIR /home/opentcs
 
 # Download OpenTCS 7.2.1
-RUN wget -q https://github.com/openTCS/opentcs/releases/download/v7.2.1/openTCS-7.2.1-bin.zip -O /tmp/opentcs.zip && \
+RUN wget -q https://github.com/openTCS/opentcs/releases/download/v7.2.1/opentcs-7.2.1-bin.zip -O /tmp/opentcs.zip && \
     unzip -q /tmp/opentcs.zip -d /home/opentcs/ && \
     rm /tmp/opentcs.zip && \
     mv /home/opentcs/openTCS-7.2.1* /home/opentcs/opentcs
