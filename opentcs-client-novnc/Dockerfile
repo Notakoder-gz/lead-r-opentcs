@@ -26,7 +26,7 @@ WORKDIR /home/opentcs
 RUN wget -q https://github.com/openTCS/opentcs/releases/download/v7.2.1/opentcs-7.2.1-bin.zip -O /tmp/opentcs.zip && \
     unzip -q /tmp/opentcs.zip -d /home/opentcs/ && \
     rm /tmp/opentcs.zip && \
-    mv /home/opentcs/openTCS-7.2.1* /home/opentcs/opentcs
+    mv /home/opentcs/opentcs-7.2.1-bin /home/opentcs/opentcs
 
 # Fix line endings and permissions for start scripts
 RUN cd /home/opentcs/opentcs && \
