@@ -1,69 +1,156 @@
-# Yahboom MicroROS-Pi5: OpenTCS Direct Integration Guide
+# Инструкция по настройке роботов Yahboom MicroROS-Pi5 для OpenTCS
 
-This document outlines the necessary steps and caveats for configuring Yahboom MicroROS-Pi5 robots (which utilize Raspberry Pi 5 and ESP32 for micro-ROS) to operate directly within the OpenTCS integration stack, completely bypassing Open-RMF.
+Данный документ содержит полное руководство по первичной настройке, проверке систем и настройке автозапуска роботов Yahboom MicroROS-Pi5 (Raspberry Pi 5 + ESP32) для работы с сервером OpenTCS.
 
-## 1. Hardware Overview
-The Yahboom MicroROS-Pi5 robot stack typically involves:
-*   **Raspberry Pi 5**: Runs ROS 2 (Humble/Jazzy) and handles high-level control, LiDAR processing, and the primary ROS 2 agent.
-*   **ESP32**: Serves as the motor/hardware controller and runs micro-ROS to communicate with the Raspberry Pi.
+---
 
-## 2. Software Configuration & Critical Issues
+## 1. Концепция сети и архитектуры
 
-### The Multicast Network Storm Problem
-By default, ROS 2 relies on DDS (specifically eProsima FastDDS or CycloneDDS) which uses **multicast UDP** for participant discovery. When connecting multiple robots to a shared network (e.g., your office Wi-Fi), the multicast traffic is broadcast to all devices on the network.
+1. **Сервер (ваша машина):** Запускает ядро `OpenTCS` и контейнер `yahboom_opentcs_adapter`. Сервер общается с роботами по Wi-Fi, используя ROS 2 (DDS).
+2. **Raspberry Pi 5 (на роботе):** Выполняет высокоуровневую логику (Nav2, Lidar) на базе ROS 2.
+3. **ESP32 (на роботе):** Контроллер двигателей, работающий на Micro-ROS.
 
-**The Issue**: The ESP32 micro-ROS node is highly sensitive to network flooding. A high volume of multicast ROS 2 discovery packets on the shared network will overwhelm the ESP32's network stack, causing the micro-ROS connection to drop, which results in the robot disconnecting or freezing.
+**Важно о FastDDS:** Само ядро OpenTCS не использует FastDDS (оно работает через HTTP API). Однако наш `yahboom_opentcs_adapter` написан на ROS 2 и использует FastDDS для связи с роботом.
+По умолчанию ROS 2 рассылает Multicast (широковещательные) пакеты для поиска устройств в сети. Если роботов в сети Wi-Fi будет несколько, этот трафик **обрушит** ESP32, и робот "зависнет". Чтобы этого избежать, мы переводим ROS 2 в режим **Unicast** (строгая связь точка-точка).
 
-### The Solution: Unicast FastDDS Configuration
-To prevent the ESP32 from crashing, you **must disable multicast** on all ROS 2 nodes in the fleet, including the Raspberry Pi's on the robots.
+---
 
-You need to enforce a **Unicast-only** FastDDS profile on the robots.
+## 2. Первичный запуск и проверка (на роботе)
 
-#### Step-by-step for the Raspberry Pi on the Robot:
-1.  Create a `fastdds_profiles.xml` file on the Raspberry Pi:
-    ```xml
-    <?xml version="1.0" encoding="UTF-8" ?>
-    <profiles xmlns="http://www.eprosima.com/XMLSchemas/fastrtps_profiles">
-        <participant profile_name="unicast_profile" is_default_profile="true">
-            <rtps>
-                <useBuiltinTransports>false</useBuiltinTransports>
-                <userTransports>
-                    <transport_id>udp_transport</transport_id>
-                </userTransports>
-            </rtps>
-        </participant>
-        <transport_descriptors>
-            <transport_descriptor>
-                <transport_id>udp_transport</transport_id>
-                <type>UDPv4</type>
-            </transport_descriptor>
-        </transport_descriptors>
-    </profiles>
-    ```
-2.  Set the environment variable before running your ROS 2 launch files on the robot:
-    ```bash
-    export FASTDDS_DEFAULT_PROFILES_FILE=/path/to/your/fastdds_profiles.xml
-    export ROS_DOMAIN_ID=20
-    ```
-    *(Note: Ensure this is added to `~/.bashrc` on the Raspberry Pi).*
+Подключитесь к Raspberry Pi робота (через SSH или подключив монитор/клавиатуру).
 
-## 3. OpenTCS Direct Adapter Configuration
-The `yahboom_opentcs` adapter handles the direct communication between ROS 2 topics and the OpenTCS Web API.
+### 2.1. Настройка Unicast профиля (Решение проблемы с ESP32)
+1. Создайте файл `fastdds_profiles.xml` в домашней директории пользователя `pi` (например, `/home/pi/fastdds_profiles.xml`):
+   ```xml
+   <?xml version="1.0" encoding="UTF-8" ?>
+   <profiles xmlns="http://www.eprosima.com/XMLSchemas/fastrtps_profiles">
+       <participant profile_name="unicast_profile" is_default_profile="true">
+           <rtps>
+               <useBuiltinTransports>false</useBuiltinTransports>
+               <userTransports>
+                   <transport_id>udp_transport</transport_id>
+               </userTransports>
+           </rtps>
+       </participant>
+       <transport_descriptors>
+           <transport_descriptor>
+               <transport_id>udp_transport</transport_id>
+               <type>UDPv4</type>
+           </transport_descriptor>
+       </transport_descriptors>
+   </profiles>
+   ```
 
-1. Edit `adapters/yahboom_opentcs/robots_config.yaml` to define your robots.
-2. Add or remove robots from the `robots` dictionary. Ensure the `ros_topic_prefix` matches the namespace of the ROS 2 topics published by each robot.
-3. The OpenTCS Plant Overview client must have vehicles created whose exact names match the names defined in the `robots` dictionary (e.g., `yahboom_01`).
+2. Откройте `~/.bashrc` на роботе и добавьте в конец файла следующие строки:
+   ```bash
+   # Подгружаем ROS 2
+   source /opt/ros/humble/setup.bash # Замените humble на jazzy, если используете новую ОС
+   # Подгружаем рабочее пространство Yahboom (зависит от того, куда вы скачали их пакеты)
+   source ~/yahboom_ws/install/setup.bash
 
-## 4. Simplified Adapter Notes
-For this initial Direct OpenTCS approach, the `yahboom_opentcs` adapter implements a **simplified bridge**.
+   # Настройки сети
+   export ROS_DOMAIN_ID=20
+   export FASTDDS_DEFAULT_PROFILES_FILE=/home/pi/fastdds_profiles.xml
+   ```
+3. Примените изменения: `source ~/.bashrc`
 
-* It successfully connects to ROS 2 topics to read telemetry (odom/battery) and forwards it to OpenTCS.
-* It successfully connects to the OpenTCS Web API and polls for incoming Transport Orders.
-* **Important:** To physically drive the Yahboom robots, the `process_order` function inside `adapters/yahboom_opentcs/adapter.py` must be hooked up to your ROS 2 Navigation Stack (Nav2). OpenTCS sends logical points (e.g., "Point-0005"), which the adapter must translate to physical `(x, y)` coordinates and send as a `NavigateToPose` Action Goal to the robot's Nav2 server. Currently, this function acts as a hook/logger to verify the integration is working before deep Nav2 configuration.
+### 2.2. Ручная проверка систем
+Перед настройкой автозапуска убедитесь, что робот полностью исправен:
 
-## 5. Workflow Check
-1. Start the Yahboom robots. Confirm their internal micro-ROS agent is running.
-2. Confirm the ROS 2 network on the Raspberry Pi is successfully publishing `tf`, `odom`, and `scan` without crashing the ESP32.
-3. Start the OpenTCS stack and the adapter using `docker compose up -d --build`.
-4. Create the corresponding vehicles in the OpenTCS Plant Overview Model Editor.
-5. Verify in OpenTCS that the robots become available and start receiving coordinates and routing orders.
+1. **Запустите Micro-ROS Agent:**
+   Откройте терминал на Raspberry Pi и запустите агента для связи с ESP32 (обычно через serial-порт `/dev/ttyUSB0` или `/dev/ttyAMA0`):
+   ```bash
+   ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyUSB0 -v6
+   ```
+   *Вы должны увидеть сообщения о том, что ESP32 успешно подключился (Session established).*
+
+2. **Проверка Лидара и Базовых узлов (в новом окне терминала):**
+   ```bash
+   ros2 launch yahboom_bringup yahboom_bringup.launch.py
+   ```
+
+3. **Проверка телеметрии:**
+   В третьем окне терминала введите:
+   ```bash
+   ros2 topic echo /odom
+   ```
+   Вы должны увидеть поток координат. Если вы вручную покатаете робота по полу, цифры `x` и `y` должны меняться.
+
+---
+
+## 3. Настройка Автозапуска (Systemd)
+
+Чтобы робот автоматически запускал Micro-ROS агента, драйверы, и лидар при включении питания и сразу "стучался" в OpenTCS, мы создадим сервисы Linux.
+
+### 3.1. Создание скрипта запуска
+Создайте файл `/home/pi/start_robot.sh`:
+```bash
+#!/bin/bash
+# 1. Загружаем окружение (ОБЯЗАТЕЛЬНО для systemd)
+source /opt/ros/humble/setup.bash
+source /home/pi/yahboom_ws/install/setup.bash
+
+export ROS_DOMAIN_ID=20
+export FASTDDS_DEFAULT_PROFILES_FILE=/home/pi/fastdds_profiles.xml
+
+# 2. Запускаем Micro-ROS Agent в фоне
+ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyUSB0 &
+AGENT_PID=$!
+
+# Даем ESP32 5 секунд на подключение
+sleep 5
+
+# 3. Запускаем основные узлы робота (Лидар, одометрию, моторы)
+ros2 launch yahboom_bringup yahboom_bringup.launch.py &
+BRINGUP_PID=$!
+
+# 4. Запускаем навигацию Nav2 (Опционально, для выполнения маршрутов OpenTCS)
+# ros2 launch yahboom_nav2 navigation.launch.py map:=/home/pi/maps/my_map.yaml &
+# NAV_PID=$!
+
+# Ждем завершения процессов
+wait $AGENT_PID $BRINGUP_PID
+```
+Сделайте скрипт исполняемым:
+```bash
+chmod +x /home/pi/start_robot.sh
+```
+
+### 3.2. Создание сервиса Systemd
+Создайте файл сервиса `/etc/systemd/system/yahboom_robot.service`:
+```ini
+[Unit]
+Description=Yahboom ROS 2 Robot Startup
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+ExecStart=/bin/bash /home/pi/start_robot.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### 3.3. Включение и проверка сервиса
+1. Перезагрузите конфигурацию systemd:
+   ```bash
+   sudo systemctl daemon-reload
+   ```
+2. Включите автозапуск при старте:
+   ```bash
+   sudo systemctl enable yahboom_robot.service
+   ```
+3. Запустите сервис сейчас:
+   ```bash
+   sudo systemctl start yahboom_robot.service
+   ```
+4. Посмотрите логи, чтобы убедиться, что всё работает:
+   ```bash
+   sudo journalctl -u yahboom_robot.service -f
+   ```
+
+Теперь, каждый раз при включении Raspberry Pi, робот автоматически будет подключаться к сети Wi-Fi, запускать ROS 2 с Unicast-профилем и транслировать топики. Сервер OpenTCS (в лице нашего адаптера) автоматически подхватит эти топики, если они находятся в одном `ROS_DOMAIN_ID`.
