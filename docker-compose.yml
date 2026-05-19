@@ -38,6 +38,4 @@ services:
     environment:
       - OPENTCS_URL=http://${HOST_IP}:55200
       - ROBOTS_CONFIG_PATH=/app/robots_config.yaml
-    volumes:
-      - ./adapters/yahboom_opentcs/robots_config.yaml:/app/robots_config.yaml:ro
     restart: unless-stopped
