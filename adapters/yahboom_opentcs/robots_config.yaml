@@ -1,0 +1,13 @@
+opentcs:
+  host: "http://localhost:55200"
+  poll_rate_hz: 1.0
+
+robots:
+  yahboom_01:
+    ros_cmd_vel_topic: "/yahboom_01/cmd_vel"
+    ros_odom_topic: "/yahboom_01/odom"
+    ros_battery_topic: "/yahboom_01/battery"
+  yahboom_02:
+    ros_cmd_vel_topic: "/yahboom_02/cmd_vel"
+    ros_odom_topic: "/yahboom_02/odom"
+    ros_battery_topic: "/yahboom_02/battery"
