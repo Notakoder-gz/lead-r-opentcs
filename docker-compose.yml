@@ -54,6 +54,7 @@ services:
     container_name: lead-r_rmf_dashboard
     network_mode: "host"
     environment:
+      - REACT_APP_AUTH_PROVIDER=stub
       - RMF_SERVER_URL=http://${HOST_IP}:8000
     restart: always
 
