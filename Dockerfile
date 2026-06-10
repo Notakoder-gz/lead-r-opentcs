@@ -24,10 +24,20 @@ RUN ls -F
 # 5. Лечим скрипты и права (теперь смотрим в корень)
 RUN dos2unix *.sh && chmod +x *.sh
 
+# Backup default config and data so we can copy them if host mount is empty
+# Make sure directories exist before copying to prevent cp from failing
+RUN mkdir -p config data default_config default_data && \
+    cp -r config/. default_config/ || true && \
+    cp -r data/. default_data/ || true
+
+# Add entrypoint script
+COPY entrypoint.sh .
+RUN dos2unix entrypoint.sh && chmod +x entrypoint.sh
+
 # 6. Переменные окружения
-ENV JAVA_TOOL_OPTIONS="-Duser.language=en -Duser.country=US -Djava.rmi.server.hostname=192.168.3.142"
+ENV JAVA_TOOL_OPTIONS="-Duser.language=en -Duser.country=US"
 
 EXPOSE 1099 8080 55200
 
 # 7. Запуск (так как файл в корне)
-CMD ["/bin/bash", "./startKernel.sh"]
+CMD ["./entrypoint.sh"]
