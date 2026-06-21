@@ -27,3 +27,15 @@ services:
       # Use HOST_IP for connecting to the kernel
       - OPENTCS_URL=http://${HOST_IP}:55200
     restart: unless-stopped
+
+  # Yahboom Direct Adapter
+  yahboom_opentcs_adapter:
+    build:
+      context: ./adapters/yahboom_opentcs
+      dockerfile: Dockerfile
+    container_name: yahboom_opentcs_adapter
+    network_mode: "host"
+    environment:
+      - OPENTCS_URL=http://${HOST_IP}:55200
+      - ROBOTS_CONFIG_PATH=/app/robots_config.yaml
+    restart: unless-stopped
